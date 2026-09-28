@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pollinations sign-in — Photopea</title>
+<style>
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #212121; color: #d8d8d8;
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  .card { text-align: center; padding: 30px; }
+  .ok { color: #6fd66f; }
+  .err { color: #ff7a70; white-space: pre-wrap; }
+  code { background: #333; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  .dim { color: #9a9a9a; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="msg">Finishing sign-in…</div>
+  <p class="dim" id="detail"></p>
+</div>
+<script>
+(function () {
+  "use strict";
+  var CHANNEL = "pollinations-photopea";
+  var msg = document.getElementById("msg");
+  var detail = document.getElementById("detail");
+
+  // OAuth fragment callback: #api_key=sk_...  (or #error=...)
+  var frag = new URLSearchParams(location.hash.slice(1));
+  var token = frag.get("api_key");
+  var error = frag.get("error");
+  history.replaceState(null, "", location.pathname + location.search); // drop fragment
+
+  if (token && window.opener && !window.opener.closed) {
+    try {
+      window.opener.postMessage(CHANNEL + ":" + JSON.stringify({ token: token }), "*");
+      msg.textContent = "✅ Connected! You can close this tab.";
+      msg.className = "ok";
+      setTimeout(function () { window.close(); }, 900);
+    } catch (e) {
+      // postMessage failed — fall back to clipboard hand-off
+      copyFallback(token);
+    }
+  } else if (token) {
+    copyFallback(token);
+  } else {
+    msg.textContent = "❌ Sign-in failed.";
+    msg.className = "err";
+    detail.textContent = error
+      ? "Pollinations said: " + error + (frag.get("error_description") ? " — " + frag.get("error_description") : "")
+      : "No token came back. Close this tab and try again.";
+  }
+
+  function copyFallback(token) {
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      msg.innerHTML = "✅ Token copied!<br>Switch to the Photopea tab and press <code>Ctrl+V</code> in the panel.";
+      msg.className = "ok";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(token).then(finish, function () { showManual(); });
+    } else showManual();
+    function showManual() {
+      msg.innerHTML = "Copy the token below, switch to the Photopea tab,<br>then press <code>Ctrl+V</code> in the plugin panel.";
+      msg.className = "ok";
+      var p = document.createElement("p");
+      var c = document.createElement("code");
+      c.textContent = token;
+      c.style.userSelect = "all";
+      p.appendChild(c);
+      document.querySelector(".card").appendChild(p);
+    }
+  }
+
+  // Paste hand-off: user copies token, panel polls the clipboard on focus.
+  window.addEventListener("load", function () { /* noop */ });
+})();
+</script>
+</body>
+</html>

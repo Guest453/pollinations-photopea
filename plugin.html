@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pollinations for Photopea</title>
+<style>
+  :root {
+    --bg: #212121; --panel: #2b2b2b; --panel2: #333333; --line: #3f3f3f;
+    --fg: #d8d8d8; --dim: #9a9a9a; --accent: #ff5c2b; --ok: #6fd66f; --err: #ff7a70;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    padding: 10px 12px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px; flex: none;
+  }
+  header .logo {
+    width: 18px; height: 18px; flex: none; border-radius: 4px;
+    background: var(--accent); display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  header b { font-size: 13px; font-weight: 600; }
+  header .spacer { flex: 1; }
+  main { flex: 1; overflow-y: auto; padding: 12px; }
+  label { display: block; font-size: 11px; color: var(--dim); margin: 0 0 4px; }
+  textarea {
+    width: 100%; min-height: 64px; resize: vertical;
+    background: var(--panel); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font: inherit;
+  }
+  textarea:focus, select:focus, button:focus-visible { outline: 1px solid var(--accent); }
+  select {
+    width: 100%; background: var(--panel); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; font: inherit;
+  }
+  .hint { font-size: 11px; color: var(--dim); margin: 4px 0 0; }
+  button {
+    font: inherit; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--fg); padding: 8px 12px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: #3d3d3d; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.1); background: var(--accent); }
+  button.link { background: none; border: none; color: var(--dim); padding: 2px 4px; text-decoration: underline; }
+  button.link:hover { background: none; color: var(--fg); }
+  #status { font-size: 12px; min-height: 16px; margin-top: 8px; white-space: pre-wrap; word-break: break-word; }
+  #status.err { color: var(--err); }
+  #status.ok { color: var(--ok); }
+  #status.busy { color: var(--dim); }
+  .acct {
+    display: flex; align-items: center; gap: 6px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 12px;
+  }
+  .acct .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .acct button { padding: 2px 8px; font-size: 11px; border-radius: 999px; }
+  section { margin-bottom: 14px; }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+  details summary { cursor: pointer; font-size: 12px; color: var(--dim); }
+  details p { margin: 6px 0 2px; font-size: 12px; color: var(--dim); }
+  code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; font-size: 11px; user-select: all; }
+  .center { text-align: center; padding: 22px 8px; }
+  .center p { color: var(--dim); margin: 8px 0 16px; }
+  footer { padding: 6px 12px 10px; font-size: 11px; color: var(--dim); flex: none; }
+  footer a { color: var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✳</div>
+  <b>Pollinations</b>
+  <span class="spacer"></span>
+  <span id="acct" class="acct" hidden>
+    <span class="dot"></span><span id="acctName">connected</span>
+    <button id="disconnect" title="Disconnect and forget the token">Disconnect</button>
+  </span>
+</header>
+
+<main>
+  <div id="loginView" class="center" hidden>
+    <p>Generate &amp; edit images right inside Photopea,<br>paying with your own Pollinations Pollen.</p>
+    <button id="connect" class="primary">Connect Pollinations account</button>
+    <p class="hint">Opens enter.pollinations.ai in a new tab.<br>No API keys to paste.</p>
+  </div>
+
+  <div id="appView" hidden>
+    <section>
+      <label for="model">Model <span id="modelCount"></span></label>
+      <select id="model"></select>
+      <p class="hint" id="modelHint"></p>
+    </section>
+
+    <section>
+      <label for="prompt">Prompt</label>
+      <textarea id="prompt" placeholder="a serene mountain landscape at sunset"></textarea>
+      <label style="margin-top:8px" for="size">Size</label>
+      <select id="size">
+        <option value="1024x1024">1024 × 1024 (square)</option>
+        <option value="1536x1024">1536 × 1024 (landscape)</option>
+        <option value="1024x1536">1024 × 1536 (portrait)</option>
+        <option value="512x512">512 × 512</option>
+        <option value="2048x2048">2048 × 2048</option>
+      </select>
+      <button id="go" class="primary" style="width:100%;margin-top:10px">Generate as new layer</button>
+    </section>
+
+    <section>
+      <details id="setupBox" hidden>
+        <summary>Owner setup: register the OAuth redirect URI</summary>
+        <p>This App Key's redirect allowlist must include:</p>
+        <p><code id="redirectUriText"></code></p>
+        <p>Add it at <b>enter.pollinations.ai/keys</b> → edit the App Key → Redirect URIs. Until then, connecting will fail with a redirect error from Pollinations.</p>
+      </details>
+    </section>
+  </div>
+
+  <div id="status"></div>
+</main>
+
+<footer>
+  <a href="https://pollinations.ai" target="_blank" rel="noreferrer">pollinations.ai</a> · pay with your own Pollen ·
+  <a href="https://github.com/Guest453/pollinations-photopea" target="_blank" rel="noreferrer">source</a>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var ENTER_URL = "https://enter.pollinations.ai";
+  var GEN_URL = "https://gen.pollinations.ai";
+  var CLIENT_ID = "pk_5drKIx9HHnvmdcqW";
+  var REDIRECT_URI = "https://guest453.github.io/pollinations-photopea/oauth.html";
+  var CHANNEL = "pollinations-photopea";
+  var TOKEN_KEY = "pollenToken";
+  var NAME_KEY = "pollenName";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    loginView: $("loginView"), appView: $("appView"), acct: $("acct"),
+    acctName: $("acctName"), connect: $("connect"), disconnect: $("disconnect"),
+    model: $("model"), modelCount: $("modelCount"), modelHint: $("modelHint"),
+    prompt: $("prompt"), size: $("size"), go: $("go"),
+    status: $("status"), setupBox: $("setupBox"), redirectUriText: $("redirectUriText"),
+  };
+
+  var ppReady = false;
+  var pending = [];       // postMessages queued until Photopea says "done"
+  var models = [];        // [{id,title,inputImage}]
+  var busy = false;
+  var hasLayerContext = false;
+
+  function setStatus(text, kind) {
+    els.status.textContent = text || "";
+    els.status.className = kind || "";
+  }
+
+  // ---------- token storage (survives Photopea reloads; NOT OAuth state) ----------
+  function getToken() {
+    try { return window.localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
+  }
+  function saveToken(tok, name) {
+    try {
+      window.localStorage.setItem(TOKEN_KEY, tok);
+      window.localStorage.setItem(NAME_KEY, name || "connected");
+    } catch (e) { /* private mode: works until reload */ }
+  }
+  function clearToken() {
+    try {
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(NAME_KEY);
+    } catch (e) { /* noop */ }
+  }
+  function getSavedName() {
+    try { return window.localStorage.getItem(NAME_KEY); } catch (e) { return null; }
+  }
+
+  // ---------- Photopea live messaging ----------
+  function ppSend(msg) {
+    try { window.parent.postMessage(msg, "*"); } catch (e) { /* noop */ }
+  }
+
+  var ppWaiters = []; // FIFO {resolve,timer} waiting for Photopea's "done"
+  var lastBytes = null;
+
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+
+    // Photopea replies "done" after every script it processed.
+    if (d === "done") {
+      if (!ppReady) { ppReady = true; flushPending(); return; }
+      var w = ppWaiters.shift();
+      if (w) { clearTimeout(w.timer); w.resolve(); }
+      return;
+    }
+    // Photopea sends ArrayBuffer data (saveToOE) BEFORE its "done".
+    if (d instanceof ArrayBuffer) { lastBytes = new Uint8Array(d); return; }
+  });
+
+  function flushPending() {
+    var q = pending; pending = [];
+    q.forEach(ppSend);
+  }
+
+  // Run a Photopea script; resolves when Photopea finished processing it.
+  function ppRun(script) {
+    return new Promise(function (resolve, reject) {
+      if (!ppReady) {
+        reject(new Error("Photopea is still loading — try again in a moment."));
+        return;
+      }
+      ppSend(script);
+      var timer = setTimeout(function () {
+        var i = ppWaiters.findIndex(function (w) { return w.timer === timer; });
+        if (i >= 0) ppWaiters.splice(i, 1);
+        resolve(); // timed out waiting for "done"; treat as processed
+      }, 15000);
+      ppWaiters.push({ resolve: resolve, timer: timer });
+    });
+  }
+
+  // Ask Photopea about the active document: size + selected layer index.
+  function getDocInfo() {
+    var script =
+      "var d=app.activeDocument;" +
+      "var sel=-1;for(var i=0;i<d.layers.length;i++){if(d.layers[i].selected)sel=i;}" +
+      "app.echoToOE(JSON.stringify({w:d.width,h:d.height,sel:sel}));";
+    return ppRun(script).then(function () {
+      // echoToOE arrives as a string message; capture it via a follow-up wait.
+      return waitForEcho(4000);
+    });
+  }
+
+  // echoToOE sends a String message. Capture whatever string arrives next.
+  var echoWaiters = [];
+  window.addEventListener("message", function (e) {
+    if (typeof e.data !== "string" || !e.data) return;
+    // ignore Photopea's own control messages
+    if (e.data === "done") return;
+    var w = echoWaiters.shift();
+    if (w) { clearTimeout(w.timer); w.resolve(e.data); }
+  });
+  function waitForEcho(ms) {
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () {
+        var i = echoWaiters.findIndex(function (w) { return w.timer === timer; });
+        if (i >= 0) echoWaiters.splice(i, 1);
+        reject(new Error("Photopea did not answer. Open or create a document first."));
+      }, ms);
+      echoWaiters.push({ resolve: resolve, timer: timer });
+    });
+  }
+
+  // Export the current layer (or whole document) as PNG bytes via saveToOE.
+  function exportCurrentLayer() {
+    lastBytes = null;
+    var script =
+      "var d=app.activeDocument;" +
+      "var sel=-1;for(var i=0;i<d.layers.length;i++){if(d.layers[i].selected)sel=i;}" +
+      "if(sel>=0){d.layers[sel].saveToOE('png');}else{d.saveToOE('png');}";
+    return ppRun(script).then(function () {
+      return new Promise(function (resolve, reject) {
+        var t = setInterval(function () {
+          if (lastBytes) { clearInterval(t); resolve(lastBytes); }
+        }, 100);
+        setTimeout(function () {
+          if (!lastBytes) {
+            clearInterval(t);
+            reject(new Error("Could not export the layer from Photopea. Select a pixel layer and try again."));
+          }
+        }, 20000);
+      });
+    });
+  }
+
+  // Insert image bytes as a NEW layer named `name` (source layer untouched).
+  // Photopea treats the next ArrayBuffer as data to open; opening inside a
+  // document drops it as a new layer above the current one.
+  function addLayerFromBytes(bytes, name) {
+    ppSend(bytes.buffer); // ArrayBuffer -> Photopea
+    return ppRun(
+      "app.activeDocument.activeLayer.name=" + JSON.stringify(name) + ";"
+    );
+  }
+
+  // ---------- Pollinations catalog ----------
+  function loadModels() {
+    return fetch(GEN_URL + "/image/models")
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (list) {
+        models = (list || []).filter(function (m) {
+          return m && m.output_modalities && m.output_modalities.indexOf("image") >= 0;
+        }).map(function (m) {
+          var id = m.name || m.id;
+          return {
+            id: id,
+            title: m.title || id,
+            inputImage: !!(m.input_modalities && m.input_modalities.indexOf("image") >= 0),
+          };
+        });
+        if (!models.length) throw new Error("Model catalog is empty.");
+        fillModelSelect();
+        return models.length;
+      });
+  }
+
+  function fillModelSelect() {
+    var og1 = document.createElement("optgroup"); og1.label = "Official models";
+    var og2 = document.createElement("optgroup"); og2.label = "Community models";
+    models.forEach(function (m) {
+      var o = document.createElement("option");
+      o.value = m.id;
+      o.textContent = m.title + (m.inputImage ? " · edit" : "");
+      (m.id.indexOf("community/") === 0 ? og2 : og1).appendChild(o);
+    });
+    var ogs = [];
+    if (og1.childNodes.length) ogs.push(og1);
+    if (og2.childNodes.length) ogs.push(og2);
+    els.model.replaceChildren.apply(els.model, ogs);
+    els.model.selectedIndex = 0;
+    els.modelCount.textContent = "(" + models.length + ")";
+    updateModelHint();
+  }
+
+  function currentModel() {
+    var id = els.model.value;
+    for (var i = 0; i < models.length; i++) if (models[i].id === id) return models[i];
+    return null;
+  }
+
+  function updateModelHint() {
+    var m = currentModel();
+    if (!m) return;
+    if (m.inputImage) {
+      els.modelHint.textContent = "Edits the selected layer (or the whole document if none is selected). The result lands on a NEW layer; the source layer stays unchanged.";
+      els.go.textContent = "Edit layer → new layer";
+    } else {
+      els.modelHint.textContent = "Generates a fresh image on a new layer.";
+      els.go.textContent = "Generate as new layer";
+    }
+  }
+
+  function authHeaders(extra) {
+    var h = extra || {};
+    var t = getToken();
+    if (t) h.Authorization = "Bearer " + t;
+    return h;
+  }
+
+  function readImageResult(r) {
+    return r.json().catch(function () { return {}; }).then(function (b) {
+      if (!r.ok) throw new Error(explainError(r.status, b));
+      var d = b && b.data && b.data[0];
+      if (d && d.b64_json) return b64ToBytes(d.b64_json);
+      if (d && d.url) {
+        return fetch(d.url).then(function (r2) {
+          if (!r2.ok) throw new Error("Generated image could not be downloaded. Try again.");
+          return r2.arrayBuffer().then(function (ab) { return new Uint8Array(ab); });
+        });
+      }
+      throw new Error("Pollinations returned no image. Try again or pick another model.");
+    });
+  }
+
+  function generate(prompt, size, modelId) {
+    return fetch(GEN_URL + "/v1/images/generations", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ prompt: prompt, model: modelId, size: size }),
+    }).then(readImageResult);
+  }
+
+  function edit(prompt, bytes, modelId) {
+    var fd = new FormData();
+    fd.append("prompt", prompt);
+    fd.append("model", modelId);
+    fd.append("image", new Blob([bytes], { type: "image/png" }), "source.png");
+    return fetch(GEN_URL + "/v1/images/edits", {
+      method: "POST", headers: authHeaders(), body: fd,
+    }).then(readImageResult);
+  }
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64);
+    var u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  }
+
+  // Normalize API errors into actionable, quest-required messages.
+  function explainError(status, body) {
+    var msg = body ? ((body.error && body.error.message) || body.message || body.error) : "";
+    if (typeof msg !== "string") msg = "";
+    var low = msg.toLowerCase();
+    if (status === 401 || status === 403 || low.indexOf("unauthorized") >= 0 || low.indexOf("invalid api key") >= 0 || low.indexOf("expired") >= 0) {
+      clearToken();
+      refreshAuthUi();
+      return "Your Pollinations sign-in expired or was revoked. Click “Connect Pollinations account” to sign in again.";
+    }
+    if (status === 402 || low.indexOf("insufficient") >= 0 || low.indexOf("balance") >= 0 || low.indexOf("pollen") >= 0 || low.indexOf("budget") >= 0) {
+      return "Not enough Pollen for this request. Top up at enter.pollinations.ai (or pick a cheaper model) and try again.";
+    }
+    if (status === 429) return "Rate limit hit — wait a few seconds and try again.";
+    if (status >= 500) return "Pollinations server error (" + status + "). Try again in a moment.";
+    return msg || ("Request failed (HTTP " + status + "). Check your connection and try again.");
+  }
+
+  function networkError(e) {
+    return "Network error: could not reach Pollinations (" + ((e && e.message) || "offline") + "). Check your internet connection and try again.";
+  }
+
+  // ---------- OAuth: legacy fragment flow in a popup + postMessage ----------
+  // The plugin iframe cannot do a full-page redirect, and Photopea's docs
+  // explicitly bless "open a new window, then come back". The popup hands the
+  // token over via postMessage from oauth.html; nothing is ever pasted.
+  function connectClick() {
+    var u = ENTER_URL + "/authorize?" + new URLSearchParams({
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: "token",
+      scope: "usage",
+    }).toString();
+    var w = window.open(u, "pollinations_auth");
+    if (!w) setStatus("Your browser blocked the sign-in window. Allow popups for this page and try again.", "err");
+    else setStatus("Finish sign-in in the new tab — this panel updates automatically.", "busy");
+  }
+
+  window.addEventListener("message", function (e) {
+    if (typeof e.data !== "string" || e.data.indexOf(CHANNEL + ":") !== 0) return;
+    var payload;
+    try { payload = JSON.parse(e.data.slice(CHANNEL.length + 1)); } catch (err) { return; }
+    if (!payload) return;
+    if (payload.token && String(payload.token).indexOf("sk_") === 0) {
+      saveToken(payload.token, payload.name || "connected");
+      refreshAuthUi();
+      setStatus("Connected. Your Pollen pays for each generation.", "ok");
+    } else if (payload.error) {
+      if (/redirect/i.test(String(payload.error))) els.setupBox.hidden = false;
+      setStatus("Sign-in failed: " + payload.error + ". If this mentions redirects, the App Key owner must register " + REDIRECT_URI + " at enter.pollinations.ai/keys (see “Owner setup” below).", "err");
+    }
+  });
+
+  // ---------- auth UI ----------
+  function refreshAuthUi() {
+    var t = getToken();
+    els.loginView.hidden = !!t;
+    els.appView.hidden = !t;
+    els.acct.hidden = !t;
+    els.acctName.textContent = t ? (getSavedName() || "connected") : "";
+    els.go.disabled = !t || busy;
+    if (t && !models.length) {
+      setStatus("Loading live model catalog…", "busy");
+      loadModels().then(function (n) {
+        setStatus(n + " models loaded from the live catalog.", "ok");
+      }).catch(function (e) {
+        setStatus(networkError(e), "err");
+      });
+    }
+  }
+
+  // ---------- main action ----------
+  function run() {
+    if (busy || !getToken()) return;
+    var prompt = els.prompt.value.trim();
+    if (!prompt) { setStatus("Type a prompt first — describe what to generate or how to edit.", "err"); return; }
+    var model = currentModel();
+    if (!model) { setStatus("Pick a model.", "err"); return; }
+
+    busy = true;
+    els.go.disabled = true;
+
+    var layerName = "Pollinations: " + prompt.slice(0, 28);
+    var p;
+    if (model.inputImage) {
+      setStatus("Exporting the current layer from Photopea…", "busy");
+      p = exportCurrentLayer()
+        .then(function (bytes) {
+          hasLayerContext = true;
+          setStatus("Editing with " + model.title + " (your Pollen pays)…", "busy");
+          return edit(prompt, bytes, model.id);
+        });
+    } else {
+      setStatus("Generating with " + model.title + " (your Pollen pays)…", "busy");
+      p = generate(prompt, els.size.value, model.id);
+    }
+
+    p.then(function (bytes) {
+      setStatus("Adding result as a new layer…", "busy");
+      return addLayerFromBytes(bytes, layerName);
+    }).then(function () {
+      setStatus("Done — added “" + layerName + "” as a new layer.", "ok");
+    }).catch(function (e) {
+      setStatus(e && e.message ? e.message : String(e), "err");
+    }).then(function () {
+      busy = false;
+      els.go.disabled = false;
+    });
+  }
+
+  // ---------- boot ----------
+  els.connect.addEventListener("click", connectClick);
+  els.disconnect.addEventListener("click", function () {
+    clearToken();
+    refreshAuthUi();
+    setStatus("Disconnected. Your token was removed from this browser.", "ok");
+  });
+  els.go.addEventListener("click", run);
+  els.model.addEventListener("change", updateModelHint);
+
+  els.redirectUriText.textContent = REDIRECT_URI;
+  refreshAuthUi();
+
+  // Ping Photopea; it answers "done" when the scripting channel is ready.
+  ppSend("app.echoToOE('pollinations-plugin-ready')");
+})();
+</script>
+</body>
+</html>
